@@ -1,0 +1,553 @@
+LOCATION 'hdfs://localhost:9000/small/'
+tblproperties ("skip.header.line.count"="1");
+select * from stock_data limit 5;
+drop table if exists stock_temp_1;
+create table stock_temp_1 as
+select 
+regexp_replace(regexp_replace(INPUT__FILE__NAME,'.*/',''),'\\..*','') as stock_name, 
+stock_date, 
+substr(stock_date,0,7) as stock_month_year, 
+Adj_Close from stock_data;
+drop table if exists stock_temp_1;
+create table stock_temp_1 as
+select 
+regexp_replace(regexp_replace(INPUT__FILE__NAME,'.*/',''),'\\..*','') as stock_name, 
+stock_date, 
+substr(stock_date,0,7) as stock_month_year, 
+adj_closeprice from stock_data;
+select * from stock_temp_1 limit 5;
+describe stock_temp_1;
+describe stock_data;
+drop table stock_temp_2;
+create table stock_temp_2 as select stock_name,min(stock_date) as min_month_date, max(stock_date) as max_month_date from temp1 group by stock_name,stock_month;
+drop table stock_temp_2;
+create table stock_temp_2 as select stock_name,min(stock_date) as min_month_date, max(stock_date) as max_month_date from stock_temp_1 group by stock_name,stock_month;
+create table stock_temp_2 as select stock_name,min(stock_date) as min_month_date, max(stock_date) as max_month_date from stock_temp_1 group by stock_name,stock_month_year;
+describe stock_temp_2;
+select * from stock_temp_2 limit 5;
+drop table stock_temp_2;
+create table stock_temp_2 as select stock_name,min(stock_date) as min_month_date, max(stock_date) as max_month_date,adj_closeprice from stock_temp_1 group by stock_name,stock_month_year;
+create table stock_temp_2 as select stock_name,min(stock_date) as min_month_date, max(stock_date) as max_month_date,adj_closeprice from stock_temp_1 group by stock_name,stock_month_year,adj_closeprice;
+select * from stock_temp_2 limit 5;
+drop table stock_temp_2;
+select * from stock_temp_2 limit 5;
+create table stock_temp_2 as select stock_name,min(stock_date) as min_month_date, max(stock_date) as max_month_date from stock_temp_1 group by stock_name,stock_month;
+drop table stock_temp_2;
+create table stock_temp_2 as select stock_name,min(stock_date) as min_month_date, max(stock_date) as max_month_date from stock_temp_1 group by stock_name,stock_month;
+create table stock_temp_2 as select stock_name,min(stock_date) as min_month_date, max(stock_date) as max_month_date from stock_temp_1 group by stock_name,stock_month_year;
+drop table stock_temp_3;
+create table stock_temp_3 as select t1.stock_name,t2.min_month_date, t2.max_month_date,t1.adj_closeprice as min_adjcloseprice,t1_other.adj_closeprice as max_adjcloseprice from  stock_temp_1 t1,stock_temp_2 t2,stock_temp_1 t1_other where t1.stock_name=t2.stock_name and t1.stock_date=t2.min_month_date and t1_other.stock_date=t2.max_month_date
+and t1_other.stock_name=t2.stock_name;
+select * from stock_temp_3 limit 5;
+drop table stock_temp_4;
+create table stock_temp_4 as 
+select t3.stock_name,(t3.max_adjcloseprice-t3.min_adjcloseprice)/t3.min_adjcloseprice as xi_Values from  stock_temp_3 t3 group by t3.stock_name;
+describe stock_temp_3;
+drop table stock_temp_4;
+create table stock_temp_4 as 
+select t3.stock_name,(t3.max_adjcloseprice-t3.min_adjcloseprice)/t3.min_adjcloseprice as xi_Values from  stock_temp_3 t3 group by t3.stock_name;
+select * from stock_temp_3 limit 5;
+drop table stock_temp_4;
+create table stock_temp_4 as 
+select t3.stock_name,(t3.max_adjcloseprice-t3.min_adjcloseprice)/t3.min_adjcloseprice as xi_Values from  stock_temp_3 t3 group by t3.stock_name;
+drop table stock_temp_4;
+create table stock_temp_4 as 
+select stock_name,(max_adjcloseprice-min_adjcloseprice)/min_adjcloseprice as xi_Values from  stock_temp_3 group by stock_name;
+drop table stock_temp_4;
+create table stock_temp_4 as 
+select stock_name,(max_adjcloseprice-min_adjcloseprice)/min_adjcloseprice as xi_Values from  stock_temp_3 group by stock_name,max_adjcloseprice,min_adjcloseprice;
+describe stock_temp_4;
+select * from stock_temp_4 limit 5;
+select min(xi_values) from stock_temp_4 group by stock_name;
+select min(xi_values) from stock_temp_4 group by stock_name,xi_values;
+drop table stock_temp_5;
+create table stock_temp_5 as
+select stock_name, Variance, rank() over (order by Variance asc) as rank_min, rank() over (order by Variance desc) as rank_max from
+(
+select stock_name, Variance from(
+select stock_name,stddev_samp(xi_values) as Variance from 
+stock_temp_4 group by stock_name,xi_values
+) where Variance>0 and Variance is not null
+);
+drop table stock_temp_5;
+create table stock_temp_5 as
+select stock_name, Variance, rank() over (order by Variance asc) as rank_min, rank() over (order by Variance desc) as rank_max from
+(
+select stock_name, Variance from(
+select stock_name,stddev_samp(xi_values) as Variance from 
+stock_temp_4 group by stock_name,xi_values
+) where Variance > 0 and Variance is not null
+);
+drop table stock_temp_5;
+create table stock_temp_5 as
+select stock_name, Variance, rank() over (order by Variance asc) as rank_min, rank() over (order by Variance desc) as rank_max from
+(select stock_name, Variance from(
+select stock_name,stddev_samp(xi_values) as Variance from 
+stock_temp_4 group by stock_name,xi_values
+) where Variance is not null and Variance > 0);
+drop table stock_temp_5;
+create table stock_temp_5 as
+select stock_name, Variance, rank() over (order by Variance asc) as rank_min, rank() over (order by Variance desc) as rank_max from
+(select stock_name, Variance from(
+select stock_name,stddev_samp(xi_values) as Variance from 
+stock_temp_4 group by stock_name,xi_values having Variance > 0
+));
+drop table stock_temp_5;
+create table stock_temp_5 as
+select stock_name, Variance, rank() over (order by Variance asc) as rank_min, rank() over (order by Variance desc) as rank_max from
+(select stock_name, Variance from(
+select stock_name,stddev_samp(xi_values) as Variance from 
+stock_temp_4 group by stock_name,xi_values 
+) having Variance > 0);
+drop table stock_temp_5;
+create table stock_temp_5 as
+select stock_name, Variance, rank() over (order by Variance asc) as rank_min, rank() over (order by Variance desc) as rank_max from
+(select stock_name, Variance from(
+select stock_name,stddev_samp(xi_values) as Variance from 
+stock_temp_4 group by stock_name,xi_values)
+) having Variance > 0;
+drop table stock_temp_5;
+create table stock_temp_5 as
+select stock_name, Variance, rank() over (order by Variance asc) as rank_min, rank() over (order by Variance desc) as rank_max from
+(select stock_name, Variance from(
+select stock_name,stddev_samp(xi_values) as Variance from 
+stock_temp_4 group by stock_name,xi_values)
+ having Variance > 0);
+drop table stock_temp_5;
+create table stock_temp_5 as
+select stock_name, Variance, rank() over (order by Variance asc) as rank_min, rank() over (order by Variance desc) as rank_max from
+(select stock_name, Variance from(
+select stock_name,stddev_samp(xi_values) as Variance from 
+stock_temp_4 group by stock_name,xi_values  having Variance > 0)
+);
+drop table stock_temp_5;
+create table stock_temp_5 as
+select stock_name, Variance, rank() over (order by Variance asc) as rank_min, rank() over (order by Variance desc) as rank_max from
+(select stock_name, Variance from(
+select stock_name,stddev_samp(xi_values) as Variance from 
+stock_temp_4 group by stock_name,xi_values having Variance > 0.0);
+drop table stock_temp_5;
+create table stock_temp_5 as
+select stock_name,stddev_samp(xi_values) as Variance from 
+stock_temp_4 group by stock_name,xi_values having Variance > 0.0;
+select * from stock_temp_5 order by Variance limit 5;
+select * from stock_temp_5 limit 5;
+select * from stock_temp_4 limit 5;
+drop table stock_temp_5;
+create table stock_temp_5 as
+select stock_name,stddev_samp(xi_values) as Variance from 
+stock_temp_4 group by stock_name,xi_values;
+select * from stock_temp_5 limit 5;
+drop table stock_temp_5;
+create table stock_temp_5 as
+select stock_name,stddev_samp(xi_values) as Variance from 
+stock_temp_4 group by stock_name;
+select * from stock_temp_5 limit 5;
+select * from stock_temp_5 limit 5 order by Variance;
+select * from stock_temp_5 order by Variance limit 5;
+select * from stock_temp_5 where Variance > 0.0 and Variance is not null limit 5;
+select * from stock_temp_5 where Variance > 0.0 and Variance is not null order by Variance limit 5;
+drop table stock_temp_6;
+create table stock_temp_6 as select stock_name, Variance, rank() over (order by Variance asc) as min_rank, rank() over (order by Variance desc) as max_rank from stock_temp_5 where Variance > 0.0 and Variance is not null;
+select stock_name, Variance from stock_temp_6 where min_rank <= 10 or max_rank<=10 order by var;
+select stock_name, Variance from stock_temp_6 where min_rank <= 10 or max_rank<=10 order by Variance;
+hive -i hdfs://localhost:9000/hive/hive.sql
+;
+hive hdfs://localhost:9000/hive/hive.sql
+;
+hdfs://localhost:9000/hive/hive.sql;
+-i hdfs://localhost:9000/hive/hive.sql;
+hdfs://localhost:9000/hive/hive.sql;
+hive.sql;
+hive.sql
+;
+hive -i hdfs://localhost:9000/hive/hive.sql;
+hive-i hdfs://localhost:9000/hive/hive.sql;
+hive -f hdfs://localhost:9000/hive/hive.sql;
+drop table if exists stock_data;
+CREATE EXTERNAL TABLE stock_data
+(stock_date STRING, open_price FLOAT, high_price FLOAT, low_price FLOAT, close_price FLOAT, volume FLOAT, adj_closeprice FLOAT)
+ROW FORMAT DELIMITED FIELDS TERMINATED BY ',' LINES TERMINATED BY '\n'
+STORED AS TEXTFILE
+LOCATION 'hdfs://localhost:9000/small/'
+tblproperties ("skip.header.line.count"="1");
+drop table if exists stock_temp_1;
+create table stock_temp_1 as
+select 
+regexp_replace(regexp_replace(INPUT__FILE__NAME,'.*/',''),'\\..*','') as stock_name, 
+stock_date, 
+substr(stock_date,0,7) as stock_month_year, 
+adj_closeprice from stock_data;
+drop table stock_temp_2;
+create table stock_temp_2 as select stock_name,min(stock_date) as min_month_date, max(stock_date) as max_month_date from stock_temp_1 group by stock_name,stock_month_year;
+drop table stock_temp_3;
+create table stock_temp_3 as select t1.stock_name,t2.min_month_date, t2.max_month_date,t1.adj_closeprice as min_adjcloseprice,t1_other.adj_closeprice as max_adjcloseprice from  stock_temp_1 t1,stock_temp_2 t2,stock_temp_1 t1_other where t1.stock_name=t2.stock_name and t1.stock_date=t2.min_month_date and t1_other.stock_date=t2.max_month_date
+and t1_other.stock_name=t2.stock_name
+drop table stock_temp_4;
+create table stock_temp_4 as 
+select stock_name,(max_adjcloseprice-min_adjcloseprice)/min_adjcloseprice as xi_Values from  stock_temp_3 group by stock_name,max_adjcloseprice,min_adjcloseprice
+drop table stock_temp_5;
+create table stock_temp_5 as
+select stock_name,stddev_samp(xi_values) as Variance from 
+stock_temp_4 group by stock_name;
+drop table stock_temp_6;
+create table stock_temp_6 as select stock_name, Variance, rank() over (order by Variance asc) as min_rank, rank() over (order by Variance desc) as max_rank from stock_temp_5 where Variance > 0.0 and Variance is not null 
+select stock_name, Variance from stock_temp_6 where min_rank <= 10 or max_rank<=10 order by Variance;
+create table stock_temp_6 as select stock_name, Variance, rank() over (order by Variance asc) as min_rank, rank() over (order by Variance desc) as max_rank from stock_temp_5 where Variance > 0.0 and Variance is not null;
+select stock_name, Variance from stock_temp_6 where min_rank <= 10 or max_rank<=10 order by Variance;
+drop table if exists stock_data;
+CREATE EXTERNAL TABLE stock_data
+(stock_date STRING, open_price FLOAT, high_price FLOAT, low_price FLOAT, close_price FLOAT, volume FLOAT, adj_closeprice FLOAT)
+ROW FORMAT DELIMITED FIELDS TERMINATED BY ',' LINES TERMINATED BY '\n'
+STORED AS TEXTFILE
+LOCATION 'hdfs://localhost:9000/small/'
+tblproperties ("skip.header.line.count"="1");
+drop table if exists stock_temp_1;
+create table stock_temp_1 as
+select 
+regexp_replace(regexp_replace(INPUT__FILE__NAME,'.*/',''),'\\..*','') as stock_name, 
+stock_date, 
+substr(stock_date,0,7) as stock_month_year, 
+adj_closeprice from stock_data;
+drop table stock_temp_2;
+create table stock_temp_2 as select stock_name,min(stock_date) as min_month_date, max(stock_date) as max_month_date from stock_temp_1 group by stock_name,stock_month_year;
+drop table stock_temp_3;
+create table stock_temp_3 as select t1.stock_name,t2.min_month_date, t2.max_month_date,t1.adj_closeprice as min_adjcloseprice,t1_other.adj_closeprice as max_adjcloseprice from  stock_temp_1 t1,stock_temp_2 t2,stock_temp_1 t1_other where t1.stock_name=t2.stock_name and t1.stock_date=t2.min_month_date and t1_other.stock_date=t2.max_month_date
+and t1_other.stock_name=t2.stock_name
+drop table stock_temp_4;
+create table stock_temp_4 as 
+select stock_name,(max_adjcloseprice-min_adjcloseprice)/min_adjcloseprice as xi_Values from  stock_temp_3 group by stock_name,max_adjcloseprice,min_adjcloseprice
+drop table stock_temp_5;
+create table stock_temp_5 as
+select stock_name,stddev_samp(xi_values) as Variance from 
+stock_temp_4 group by stock_name;
+drop table stock_temp_6;
+create table stock_temp_6 as select stock_name, Variance, rank() over (order by Variance asc) as min_rank, rank() over (order by Variance desc) as max_rank from stock_temp_5 where Variance > 0.0 and Variance is not null; 
+select stock_name, Variance from stock_temp_6 where min_rank <= 10 or max_rank<=10 order by Variance;
+drop table if exists stock_data;
+CREATE EXTERNAL TABLE stock_data
+(stock_date STRING, open_price FLOAT, high_price FLOAT, low_price FLOAT, close_price FLOAT, volume FLOAT, adj_closeprice FLOAT)
+ROW FORMAT DELIMITED FIELDS TERMINATED BY ',' LINES TERMINATED BY '\n'
+STORED AS TEXTFILE
+LOCATION 'hdfs://localhost:9000/small/'
+tblproperties ("skip.header.line.count"="1");
+drop table if exists stock_temp_1;
+create table stock_temp_1 as
+select 
+regexp_replace(regexp_replace(INPUT__FILE__NAME,'.*/',''),'\\..*','') as stock_name, 
+stock_date, 
+substr(stock_date,0,7) as stock_month_year, 
+adj_closeprice from stock_data;
+drop table stock_temp_2;
+create table stock_temp_2 as select stock_name,min(stock_date) as min_month_date, max(stock_date) as max_month_date from stock_temp_1 group by stock_name,stock_month_year;
+drop table stock_temp_3;
+create table stock_temp_3 as select t1.stock_name,t2.min_month_date, t2.max_month_date,t1.adj_closeprice as min_adjcloseprice,t1_other.adj_closeprice as max_adjcloseprice from  stock_temp_1 t1,stock_temp_2 t2,stock_temp_1 t1_other where t1.stock_name=t2.stock_name and t1.stock_date=t2.min_month_date and t1_other.stock_date=t2.max_month_date
+and t1_other.stock_name=t2.stock_name
+drop table stock_temp_4;
+create table stock_temp_4 as 
+select stock_name,(max_adjcloseprice-min_adjcloseprice)/min_adjcloseprice as xi_Values from  stock_temp_3 group by stock_name,max_adjcloseprice,min_adjcloseprice
+drop table stock_temp_5;
+create table stock_temp_5 as
+select stock_name,stddev_samp(xi_values) as Variance from 
+stock_temp_4 group by stock_name;
+drop table stock_temp_6;
+create table stock_temp_6 as select stock_name, Variance, rank() over (order by Variance asc) as min_rank, rank() over (order by Variance desc) as max_rank from stock_temp_5 where Variance > 0.0 and Variance is not null;
+INSERT OVERWRITE LOCAL DIRECTORY '/home/harsh/local/results' select stock_name, Variance from stock_temp_6 where min_rank <= 10 or max_rank<=10 order by Variance;
+select stock_name, Variance from stock_temp_6 where min_rank <= 10 or max_rank<=10 order by Variance > /home/harsh/local/results/output.txt;
+INSERT OVERWRITE LOCAL DIRECTORY '/home/harsh/local/results' select stock_name, Variance from stock_temp_6 where min_rank <= 10 or max_rank<=10 order by Variance ;
+INSERT OVERWRITE LOCAL DIRECTORY '/home/harsh/local/results' select stock_name, Variance from stock_temp_6 where min_rank <= 10 or max_rank<=10 order by Variance;
+version
+;
+hive -e version;
+drop table if exists stock_data;
+CREATE EXTERNAL TABLE stock_data
+(stock_date STRING, open_price FLOAT, high_price FLOAT, low_price FLOAT, close_price FLOAT, volume FLOAT, adj_closeprice FLOAT)
+ROW FORMAT DELIMITED FIELDS TERMINATED BY ',' LINES TERMINATED BY '\n'
+STORED AS TEXTFILE
+LOCATION 'hdfs://localhost:9000/small/'
+tblproperties ("skip.header.line.count"="1");
+
+drop table if exists stock_temp_1;
+create table stock_temp_1 as
+select 
+regexp_replace(regexp_replace(INPUT__FILE__NAME,'.*/',''),'\\..*','') as stock_name, 
+stock_date, 
+substr(stock_date,0,7) as stock_month_year, 
+adj_closeprice from stock_data;
+
+drop table stock_temp_2;
+create table stock_temp_2 as select stock_name,min(stock_date) as min_month_date, max(stock_date) as max_month_date from stock_temp_1 group by stock_name,stock_month_year;
+
+drop table stock_temp_3;
+create table stock_temp_3 as select t1.stock_name,t2.min_month_date, t2.max_month_date,t1.adj_closeprice as min_adjcloseprice,t1_other.adj_closeprice as max_adjcloseprice from  stock_temp_1 t1,stock_temp_2 t2,stock_temp_1 t1_other where t1.stock_name=t2.stock_name and t1.stock_date=t2.min_month_date and t1_other.stock_date=t2.max_month_date
+and t1_other.stock_name=t2.stock_name
+
+drop table stock_temp_4;
+create table stock_temp_4 as 
+select stock_name,(max_adjcloseprice-min_adjcloseprice)/min_adjcloseprice as xi_Values from  stock_temp_3 group by stock_name,max_adjcloseprice,min_adjcloseprice
+
+drop table stock_temp_5;
+create table stock_temp_5 as
+select stock_name,stddev_samp(xi_values) as Variance from 
+stock_temp_4 group by stock_name;
+
+drop table stock_temp_6;
+create table stock_temp_6 as select stock_name, Variance, rank() over (order by Variance asc) as min_rank, rank() over (order by Variance desc) as max_rank from stock_temp_5 where Variance > 0.0 and Variance is not null 
+
+select stock_name, Variance from stock_temp_6 where min_rank <= 10 or max_rank<=10 order by Variance;
+drop table if exists stock_data;
+CREATE EXTERNAL TABLE stock_data
+(stock_date STRING, open_price FLOAT, high_price FLOAT, low_price FLOAT, close_price FLOAT, volume FLOAT, adj_closeprice FLOAT)
+ROW FORMAT DELIMITED FIELDS TERMINATED BY ',' LINES TERMINATED BY '\n'
+STORED AS TEXTFILE
+LOCATION 'hdfs://localhost:9000/small/'
+tblproperties ("skip.header.line.count"="1");
+drop table if exists stock_temp_1;
+create table stock_temp_1 as
+select 
+regexp_replace(regexp_replace(INPUT__FILE__NAME,'.*/',''),'\\..*','') as stock_name, 
+stock_date, 
+substr(stock_date,0,7) as stock_month_year, 
+adj_closeprice from stock_data;
+drop table stock_temp_2;
+create table stock_temp_2 as select stock_name,min(stock_date) as min_month_date, max(stock_date) as max_month_date from stock_temp_1 group by stock_name,stock_month_year;
+drop table stock_temp_3;
+create table stock_temp_3 as select t1.stock_name,t2.min_month_date, t2.max_month_date,t1.adj_closeprice as min_adjcloseprice,t1_other.adj_closeprice as max_adjcloseprice from  stock_temp_1 t1,stock_temp_2 t2,stock_temp_1 t1_other where t1.stock_name=t2.stock_name and t1.stock_date=t2.min_month_date and t1_other.stock_date=t2.max_month_date
+and t1_other.stock_name=t2.stock_name
+drop table stock_temp_4;
+create table stock_temp_4 as 
+select stock_name,(max_adjcloseprice-min_adjcloseprice)/min_adjcloseprice as xi_Values from  stock_temp_3 group by stock_name,max_adjcloseprice,min_adjcloseprice
+drop table stock_temp_5;
+create table stock_temp_5 as
+select stock_name,stddev_samp(xi_values) as Variance from 
+stock_temp_4 group by stock_name;
+drop table stock_temp_6;
+create table stock_temp_6 as select stock_name, Variance, rank() over (order by Variance asc) as min_rank, rank() over (order by Variance desc) as max_rank from stock_temp_5 where Variance > 0.0 and Variance is not null 
+select stock_name, Variance from stock_temp_6 where min_rank <= 10 or max_rank<=10 order by Variance;
+drop table if exists stock_data;
+CREATE EXTERNAL TABLE stock_data
+(stock_date STRING, open_price FLOAT, high_price FLOAT, low_price FLOAT, close_price FLOAT, volume FLOAT, adj_closeprice FLOAT)
+ROW FORMAT DELIMITED FIELDS TERMINATED BY ',' LINES TERMINATED BY '\n'
+STORED AS TEXTFILE
+LOCATION 'hdfs://localhost:9000/small/'
+tblproperties ("skip.header.line.count"="1");
+drop table if exists stock_temp_1;
+create table stock_temp_1 as
+select 
+regexp_replace(regexp_replace(INPUT__FILE__NAME,'.*/',''),'\\..*','') as stock_name, 
+stock_date, 
+substr(stock_date,0,7) as stock_month_year, 
+adj_closeprice from stock_data;
+drop table stock_temp_2;
+create table stock_temp_2 as select stock_name,min(stock_date) as min_month_date, max(stock_date) as max_month_date from stock_temp_1 group by stock_name,stock_month_year;
+drop table stock_temp_3;
+create table stock_temp_3 as select t1.stock_name,t2.min_month_date, t2.max_month_date,t1.adj_closeprice as min_adjcloseprice,t1_other.adj_closeprice as max_adjcloseprice from  stock_temp_1 t1,stock_temp_2 t2,stock_temp_1 t1_other where t1.stock_name=t2.stock_name and t1.stock_date=t2.min_month_date and t1_other.stock_date=t2.max_month_date
+and t1_other.stock_name=t2.stock_name
+drop table stock_temp_4;
+create table stock_temp_4 as 
+select stock_name,(max_adjcloseprice-min_adjcloseprice)/min_adjcloseprice as xi_Values from  stock_temp_3 group by stock_name,max_adjcloseprice,min_adjcloseprice
+drop table stock_temp_5;
+create table stock_temp_5 as
+select stock_name,stddev_samp(xi_values) as Variance from 
+stock_temp_4 group by stock_name;
+drop table stock_temp_6;
+create table stock_temp_6 as select stock_name, Variance, rank() over (order by Variance asc) as min_rank, rank() over (order by Variance desc) as max_rank from stock_temp_5 where Variance > 0.0 and Variance is not null 
+;
+select * from stock_temp_1 limit 5;
+select * from stock_temp_2 limit 5;
+select * from stock_temp_3 limit 5;
+drop table stock_temp_3;
+create table stock_temp_3 as select t1.stock_name,t2.min_month_date, t2.max_month_date,t1.adj_closeprice as min_adjcloseprice,t1_other.adj_closeprice as max_adjcloseprice from  stock_temp_1 t1,stock_temp_2 t2,stock_temp_1 t1_other where t1.stock_name=t2.stock_name and t1.stock_date=t2.min_month_date and t1_other.stock_date=t2.max_month_date
+and t1_other.stock_name=t2.stock_name;
+drop table stock_temp_3;
+create table stock_temp_3 as select t1.stock_name,t2.min_month_date, t2.max_month_date,t1.adj_closeprice as min_adjcloseprice,t1_other.adj_closeprice as max_adjcloseprice from  stock_temp_1 t1,stock_temp_2 t2,stock_temp_1 t1_other where t1.stock_name=t2.stock_name and t1.stock_date=t2.min_month_date and t1_other.stock_date=t2.max_month_date;
+drop table stock_temp_3;
+create table stock_temp_3 as select t1.stock_name,t2.min_month_date, t2.max_month_date,t1.adj_closeprice as min_adjcloseprice,t1_other.adj_closeprice as max_adjcloseprice from  stock_temp_1 t1,stock_temp_2 t2,stock_temp_1 t1_other where t1.stock_name=t2.stock_name and t1.stock_date=t2.min_month_date and t1_other.stock_date=t2.max_month_date;
+drop table if exists stock_data;
+CREATE EXTERNAL TABLE stock_data
+(stock_date STRING, open_price FLOAT, high_price FLOAT, low_price FLOAT, close_price FLOAT, volume FLOAT, adj_closeprice FLOAT)
+ROW FORMAT DELIMITED FIELDS TERMINATED BY ',' LINES TERMINATED BY '\n'
+STORED AS TEXTFILE
+LOCATION 'hdfs://localhost:9000/small/'
+tblproperties ("skip.header.line.count"="1");
+drop table if exists stock_temp_1;
+create table stock_temp_1 as
+select 
+regexp_replace(regexp_replace(INPUT__FILE__NAME,'.*/',''),'\\..*','') as stock_name, 
+stock_date, 
+substr(stock_date,0,7) as stock_month_year, 
+adj_closeprice from stock_data;
+drop table stock_temp_2;
+create table stock_temp_2 as select stock_name,min(stock_date) as min_month_date, max(stock_date) as max_month_date from stock_temp_1 group by stock_name,stock_month_year;
+drop table stock_temp_3;
+create table stock_temp_3 as select t1.stock_name,t2.min_month_date, t2.max_month_date,t1.adj_closeprice as min_adjcloseprice,t1_other.adj_closeprice as max_adjcloseprice from  stock_temp_1 t1,stock_temp_2 t2,stock_temp_1 t1_other where t1.stock_name=t2.stock_name and t1.stock_date=t2.min_month_date and t1_other.stock_date=t2.max_month_date;
+drop table stock_temp_2;
+create table stock_temp_2 as select stock_name,min(stock_date) as min_month_date, max(stock_date) as max_month_date from stock_temp_1 group by stock_name,stock_month_year;
+drop table stock_temp_3;
+create table stock_temp_3 as select t1.stock_name,t2.min_month_date, t2.max_month_date,t1.adj_closeprice as min_adjcloseprice,t1_other.adj_closeprice as max_adjcloseprice from  stock_temp_1 t1,stock_temp_2 t2,stock_temp_1 t1_other where t1.stock_name=t2.stock_name and t1.stock_date=t2.min_month_date and t1_other.stock_date=t2.max_month_date;
+sudo service hive-server2 stop
+;
+drop table stock_temp_3;
+create table stock_temp_3 as select t1.stock_name,t2.min_month_date, t2.max_month_date,t1.adj_closeprice as min_adjcloseprice,t1_other.adj_closeprice as max_adjcloseprice from  stock_temp_1 t1,stock_temp_2 t2,stock_temp_1 t1_other where t1.stock_name=t2.stock_name and t1.stock_date=t2.min_month_date and t1_other.stock_date=t2.max_month_date;
+drop table if exists stock_data;
+CREATE EXTERNAL TABLE stock_data
+(stock_date STRING, open_price FLOAT, high_price FLOAT, low_price FLOAT, close_price FLOAT, volume FLOAT, adj_closeprice FLOAT)
+ROW FORMAT DELIMITED FIELDS TERMINATED BY ',' LINES TERMINATED BY '\n'
+STORED AS TEXTFILE
+LOCATION 'hdfs://localhost:9000/small/'
+tblproperties ("skip.header.line.count"="1");
+drop table if exists stock_temp_1;
+create table stock_temp_1 as
+select 
+regexp_replace(regexp_replace(INPUT__FILE__NAME,'.*/',''),'\\..*','') as stock_name, 
+stock_date, 
+substr(stock_date,0,7) as stock_month_year, 
+adj_closeprice from stock_data;
+drop table stock_temp_2;
+create table stock_temp_2 as select stock_name,min(stock_date) as min_month_date, max(stock_date) as max_month_date from stock_temp_1 group by stock_name,stock_month_year;
+drop table stock_temp_3;
+create table stock_temp_3 as select t1.stock_name,t2.min_month_date, t2.max_month_date,t1.adj_closeprice as min_adjcloseprice,t1_other.adj_closeprice as max_adjcloseprice from  stock_temp_1 t1,stock_temp_2 t2,stock_temp_1 t1_other where t1.stock_name=t2.stock_name and t1.stock_date=t2.min_month_date and t1_other.stock_date=t2.max_month_date;
+CREATE TABLE stock_data
+(stock_date STRING, open_price FLOAT, high_price FLOAT, low_price FLOAT, close_price FLOAT, volume FLOAT, adj_closeprice FLOAT)
+ROW FORMAT DELIMITED FIELDS TERMINATED BY ',' LINES TERMINATED BY '\n'
+STORED AS TEXTFILE
+LOCATION 'hdfs://localhost:9000/small'
+tblproperties ('skip.header.line.count'='1');"
+;
+drop table if exists stock_data;
+CREATE TABLE stock_data
+(stock_date STRING, open_price FLOAT, high_price FLOAT, low_price FLOAT, close_price FLOAT, volume FLOAT, adj_closeprice FLOAT)
+ROW FORMAT DELIMITED FIELDS TERMINATED BY ',' LINES TERMINATED BY '\n'
+STORED AS TEXTFILE
+LOCATION 'hdfs://localhost:9000/small'
+tblproperties ('skip.header.line.count'='1');"
+;
+CREATE TABLE stock_data
+(stock_date STRING, open_price FLOAT, high_price FLOAT, low_price FLOAT, close_price FLOAT, volume FLOAT, adj_closeprice FLOAT)
+ROW FORMAT DELIMITED FIELDS TERMINATED BY ',' LINES TERMINATED BY '\n'
+STORED AS TEXTFILE
+LOCATION 'hdfs://localhost:9000/small'
+tblproperties ('skip.header.line.count'='1')";
+CREATE TABLE stock_data
+(stock_date STRING, open_price FLOAT, high_price FLOAT, low_price FLOAT, close_price FLOAT, volume FLOAT, adj_closeprice FLOAT)
+ROW FORMAT DELIMITED FIELDS TERMINATED BY ',' LINES TERMINATED BY '\n'
+STORED AS TEXTFILE
+LOCATION 'hdfs://localhost:9000/small'
+tblproperties ('skip.header.line.count'='1');
+CREATE TABLE stock_data
+(stock_date STRING, open_price FLOAT, high_price FLOAT, low_price FLOAT, close_price FLOAT, volume FLOAT, adj_closeprice FLOAT)
+ROW FORMAT DELIMITED FIELDS TERMINATED BY ',' LINES TERMINATED BY '\n'
+STORED AS TEXTFILE
+LOCATION 'hdfs://localhost:9000/small'
+;
+drop table if exists stock_data;
+CREATE TABLE stock_data
+(stock_date STRING, open_price FLOAT, high_price FLOAT, low_price FLOAT, close_price FLOAT, volume FLOAT, adj_closeprice FLOAT)
+ROW FORMAT DELIMITED FIELDS TERMINATED BY ',' LINES TERMINATED BY '\n'
+STORED AS TEXTFILE);
+CREATE TABLE stock_data
+(stock_date STRING, open_price FLOAT, high_price FLOAT, low_price FLOAT, close_price FLOAT, volume FLOAT, adj_closeprice FLOAT)
+ROW FORMAT DELIMITED FIELDS TERMINATED BY ',' LINES TERMINATED BY '\n'
+STORED AS TEXTFILE
+LOCATION 'hdfs://localhost:9000/small'
+tblproperties ('skip.header.line.count'='1');
+select * from stock_data limit 5;
+drop table if exists stock_data;
+CREATE EXTERNAL TABLE stock_data
+(stock_date STRING, open_price FLOAT, high_price FLOAT, low_price FLOAT, close_price FLOAT, volume FLOAT, adj_closeprice FLOAT)
+ROW FORMAT DELIMITED FIELDS TERMINATED BY ',' LINES TERMINATED BY '\n'
+STORED AS TEXTFILE
+LOCATION '/gpfs/courses/cse587/spring2015/data/hw1/small'
+tblproperties ('skip.header.line.count'='1');
+select * from stock_data limit 5;
+drop table if exists stock_data;
+CREATE TABLE stock_data
+(stock_date STRING, open_price FLOAT, high_price FLOAT, low_price FLOAT, close_price FLOAT, volume FLOAT, adj_closeprice FLOAT)
+ROW FORMAT DELIMITED FIELDS TERMINATED BY ',' LINES TERMINATED BY '\n'
+STORED AS TEXTFILE
+LOCATION 'hdfs://localhost:9000/small/'
+tblproperties ('skip.header.line.count'='1');
+select * from stock_data limit 5;
+select * from stock_data;
+describe stock_data;
+drop table if exists stock_data;
+CREATE TABLE stock_data
+(stock_date STRING, open_price FLOAT, high_price FLOAT, low_price FLOAT, close_price FLOAT, volume FLOAT, adj_closeprice FLOAT)
+ROW FORMAT DELIMITED FIELDS TERMINATED BY ',' LINES TERMINATED BY '\n'
+STORED AS TEXTFILE
+LOCATION '/home/harsh/small/'
+tblproperties ('skip.header.line.count'='1');
+select * from stock_data limit 5;
+select * from stock_data;
+drop table if exists stock_data;
+CREATE TABLE stock_data
+(stock_date STRING, open_price FLOAT, high_price FLOAT, low_price FLOAT, close_price FLOAT, volume FLOAT, adj_closeprice FLOAT)
+ROW FORMAT DELIMITED FIELDS TERMINATED BY ',' LINES TERMINATED BY '\n'
+STORED AS TEXTFILE;
+LOAD DATA LOCAL INPATH '/home/harsh/small/' OVERWRITE INTO TABLE stock_data;
+select * from stock_data limit 5;
+drop table if exists stock_data;
+CREATE TABLE stock_data
+(stock_date STRING, open_price FLOAT, high_price FLOAT, low_price FLOAT, close_price FLOAT, volume FLOAT, adj_closeprice FLOAT)
+ROW FORMAT DELIMITED FIELDS TERMINATED BY ',' LINES TERMINATED BY '\n'
+STORED AS TEXTFILE
+tblproperties ('skip.header.line.count'='1');
+"LOAD DATA LOCAL INPATH '/home/harsh/small/' OVERWRITE INTO TABLE stock_data;"
+show tables;
+select * from stock_data limit 5;
+LOAD DATA LOCAL INPATH '/home/harsh/small/' OVERWRITE INTO TABLE stock_data;
+select * from stock_data limit 5;
+select stock_name, Variance from stock_temp_6 where min_rank <= 10 or max_rank<=10 order by Variance;
+drop table if exists stock_data;
+CREATE EXTERNAL TABLE stock_data
+(stock_date STRING, open_price FLOAT, high_price FLOAT, low_price FLOAT, close_price FLOAT, volume FLOAT, adj_closeprice FLOAT)
+ROW FORMAT DELIMITED FIELDS TERMINATED BY ',' LINES TERMINATED BY '\n'
+STORED AS TEXTFILE
+LOCATION 'hdfs://localhost:9000/small/'
+tblproperties ("skip.header.line.count"="1");
+drop table if exists stock_temp_1;
+create table stock_temp_1 as
+select 
+regexp_replace(regexp_replace(INPUT__FILE__NAME,'.*/',''),'\\..*','') as stock_name, 
+stock_date, 
+substr(stock_date,0,7) as stock_month_year, 
+adj_closeprice from stock_data;
+show tables;
+select * from stock_temp_6 limit 5;
+select * from stock_temp_2 limit 5;
+select * from stock_temp_4 limit 5;
+select * from stock_temp_6 limit 5;
+drop table if exists stock_data;
+CREATE EXTERNAL TABLE stock_data
+(stock_date STRING, open_price FLOAT, high_price FLOAT, low_price FLOAT, close_price FLOAT, volume FLOAT, adj_closeprice FLOAT)
+ROW FORMAT DELIMITED FIELDS TERMINATED BY ',' LINES TERMINATED BY '\n'
+STORED AS TEXTFILE
+LOCATION 'hdfs://localhost:9000/versmall/'
+tblproperties ("skip.header.line.count"="1");
+select * from stock_data limit 5;
+drop table if exists stock_temp_1;
+create table stock_temp_1 as
+select 
+regexp_replace(regexp_replace(INPUT__FILE__NAME,'.*/',''),'\\..*','') as stock_name, 
+stock_date, 
+substr(stock_date,0,7) as stock_month_year, 
+adj_closeprice from stock_data;
+SET hive.exec.mode.local.auto=false;
+drop table if exists stock_temp_1;
+create table stock_temp_1 as
+select 
+regexp_replace(regexp_replace(INPUT__FILE__NAME,'.*/',''),'\\..*','') as stock_name, 
+stock_date, 
+substr(stock_date,0,7) as stock_month_year, 
+adj_closeprice from stock_data;
+SET mapred.job.tracker=local;
+SET hive.exec.mode.local.auto=false;
+drop table if exists stock_temp_1;
+create table stock_temp_1 as
+select 
+regexp_replace(regexp_replace(INPUT__FILE__NAME,'.*/',''),'\\..*','') as stock_name, 
+stock_date, 
+substr(stock_date,0,7) as stock_month_year, 
+adj_closeprice from stock_data;
+clear
+;
